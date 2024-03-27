@@ -19,42 +19,96 @@
 
           <input
             class="form-control"
-            type="text"
+            type="date"
             name=""
             id="date"
             placeholder="дд.мм.гггг"
+            v-model="searchDate"
+            @change="changeDate"
           />
         </div>
 
         <div class="col-2">
           <label class="form-label" for="sourse">Источник платежа </label>
-          <input
+          <select
             class="form-control"
-            style="max-width: 250px"
-            type="text"
             name=""
             id="sourse"
-          />
+            v-model="searchSource"
+            @change="changeSource"
+          >
+            <option value="0">Все источники</option>
+            <option v-for="option in metaData.sources" :value="option.id">
+              {{ option.title.replace(/^./, option.title[0].toUpperCase()) }}
+            </option>
+          </select>
         </div>
       </div>
     </form>
 
-    <table class="table mt-3">
+    <table class="table mt-3 border-top">
       <thead>
         <tr>
-          <th>Клиенты <button></button></th>
+          <th>
+            Клиенты
+            <button
+              class="arrow"
+              @click="
+                this.sort = 'client';
+                this.conditionSort = !this.conditionSort;
+              "
+            >
+              <ArrowButton />
+            </button>
+          </th>
           <th>Договор №</th>
-          <th>Тип платежа <button></button></th>
-          <th>Дата <button></button></th>
-          <th>Сумма (руб)</th>
-          <th>Источник платежа</th>
-          <th>Статус <button></button></th>
+          <th>
+            Тип платежа
+            <button
+              class="arrow"
+              @click="
+                this.sort = 'type_id';
+                this.conditionSort = !this.conditionSort;
+              "
+            >
+              <ArrowButton />
+            </button>
+          </th>
+          <th class="text-center">
+            Дата
+            <button
+              class="arrow"
+              @click="
+                this.sort = 'date';
+                this.conditionSort = !this.conditionSort;
+              "
+            >
+              <ArrowButton />
+            </button>
+          </th>
+          <th class="text-center">Сумма (руб)</th>
+          <th>
+            Источник <br />
+            платежа
+          </th>
+          <th class="text-center">
+            Статус
+            <button
+              class="arrow"
+              @click="
+                this.sort = 'status_id';
+                this.conditionSort = !this.conditionSort;
+              "
+            >
+              <ArrowButton />
+            </button>
+          </th>
         </tr>
       </thead>
 
       <tbody>
         <PayrollItem
-          v-for="payment in payroll"
+          v-for="payment in searchByDate"
           :payment="payment"
           :metaData="metaData"
         />
@@ -67,14 +121,19 @@
 import axios from "axios";
 import PayrollItem from "./PayrollItem.vue";
 import Modal from "./Modal.vue";
+import ArrowButton from "./ArrowButton.vue";
 
 export default {
-  components: { PayrollItem, Modal },
+  components: { PayrollItem, Modal, ArrowButton },
   data() {
     return {
       payroll: [],
       metaData: [],
       modalVisible: false,
+      sort: "",
+      conditionSort: true,
+      searchSource: 0,
+      searchDate: "",
     };
   },
   methods: {
@@ -84,6 +143,14 @@ export default {
 
     showModal() {
       this.modalVisible = true;
+    },
+
+    changeSource(event) {
+      this.searchSource = event.target.value;
+    },
+
+    changeDate(event) {
+      this.searchDate = event.target.value;
     },
 
     async getPayroll() {
@@ -105,7 +172,49 @@ export default {
   mounted() {
     this.getPayroll();
   },
+  computed: {
+    sortItems() {
+      if (this.payroll.length !== 0 && this.sort) {
+        const sortedArr = [...this.payroll].sort((a, b) => {
+          if (a[this.sort] > b[this.sort]) {
+            return 1;
+          }
+          if (a[this.sort] < b[this.sort]) {
+            return -1;
+          }
+
+          return 0;
+        });
+
+        return this.conditionSort ? sortedArr : sortedArr.reverse();
+      } else return [...this.payroll];
+    },
+
+    searchBySource() {
+      if (this.searchSource == 0) return this.sortItems;
+
+      return this.sortItems.filter(
+        (item) => item.source_id == this.searchSource
+      );
+    },
+
+    searchByDate() {
+      if (this.searchDate == "") return this.searchBySource;
+      console.log(new Date(this.searchDate).toLocaleDateString("ru"));
+
+      return this.searchBySource.filter((item) =>
+        new Date(item.date)
+          .toLocaleDateString("ru")
+          .includes(new Date(this.searchDate).toLocaleDateString("ru"))
+      );
+    },
+  },
 };
 </script>
 
-<style></style>
+<style scoped>
+.arrow {
+  border: 0;
+  background-color: #fff;
+}
+</style>
