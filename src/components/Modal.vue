@@ -240,20 +240,28 @@ export default {
       addPayment: "payroll/addPayment",
     }),
 
+    async post(form) {
+      try {
+        const response = await axios.post(
+          "https://tests.szapi.ru/ts5/public_html/payments",
+          form
+        );
+
+        if (response.status == 200) {
+          this.addPayment(form);
+        }
+      } catch (error) {
+        console.log(error);
+      }
+    },
+
     checkForm(event) {
       this.validation = true;
       event.preventDefault();
       event.stopPropagation();
 
-      console.log(this.form);
-
       if (event.target.checkValidity() === true) {
-        const response = axios.post(
-          "https://tests.szapi.ru/ts5/public_html/payments",
-          this.form
-        );
-
-        this.addPayment(response);
+        this.post(this.form);
 
         this.hideModal();
 

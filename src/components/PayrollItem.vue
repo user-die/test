@@ -7,7 +7,13 @@
       {{ new Date(payment.date).toLocaleDateString("ru") }}
     </td>
     <td class="text-center">{{ payment.summ.slice(0, -3) }}</td>
-    <td>{{ this.metaData.sources[payment.source_id - 1].title }}</td>
+    <td>
+      {{
+        payment.source_id == 0
+          ? this.metaData.sources[payment.source_id].title
+          : this.metaData.sources[payment.source_id - 1].title
+      }}
+    </td>
     <td class="text-center">
       <p
         :class="[

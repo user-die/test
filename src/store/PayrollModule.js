@@ -87,7 +87,7 @@ export default {
     },
 
     addPayment(state, payload) {
-      state.payload.push(payload);
+      state.payroll.push(payload);
     },
   },
 
