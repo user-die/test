@@ -1,5 +1,12 @@
 <template>
-  <Modal v-model:showModal="modalVisible" v-bind:hideModal="hideModal" />
+  <transition name="fade">
+    <Modal
+      v-if="modalVisible"
+      v-model:showModal="modalVisible"
+      v-bind:hideModal="hideModal"
+      v-bind:metaData="metaData"
+    />
+  </transition>
   <div class="container">
     <h1>Список платежей</h1>
     <button
@@ -23,8 +30,8 @@
             name=""
             id="date"
             placeholder="дд.мм.гггг"
-            v-model="searchDate"
-            @change="changeDate"
+            :value="searchDate"
+            @change="setDateSearch"
           />
         </div>
 
@@ -34,8 +41,8 @@
             class="form-control"
             name=""
             id="sourse"
-            v-model="searchSource"
-            @change="changeSource"
+            :value="searchSource"
+            @change="setSourceSearch"
           >
             <option value="0">Все источники</option>
             <option v-for="option in metaData.sources" :value="option.id">
@@ -46,175 +53,58 @@
       </div>
     </form>
 
-    <table class="table mt-3 border-top">
-      <thead>
-        <tr>
-          <th>
-            Клиенты
-            <button
-              class="arrow"
-              @click="
-                this.sort = 'client';
-                this.conditionSort = !this.conditionSort;
-              "
-            >
-              <ArrowButton />
-            </button>
-          </th>
-          <th>Договор №</th>
-          <th>
-            Тип платежа
-            <button
-              class="arrow"
-              @click="
-                this.sort = 'type_id';
-                this.conditionSort = !this.conditionSort;
-              "
-            >
-              <ArrowButton />
-            </button>
-          </th>
-          <th class="text-center">
-            Дата
-            <button
-              class="arrow"
-              @click="
-                this.sort = 'date';
-                this.conditionSort = !this.conditionSort;
-              "
-            >
-              <ArrowButton />
-            </button>
-          </th>
-          <th class="text-center">Сумма (руб)</th>
-          <th>
-            Источник <br />
-            платежа
-          </th>
-          <th class="text-center">
-            Статус
-            <button
-              class="arrow"
-              @click="
-                this.sort = 'status_id';
-                this.conditionSort = !this.conditionSort;
-              "
-            >
-              <ArrowButton />
-            </button>
-          </th>
-        </tr>
-      </thead>
-
-      <tbody>
-        <PayrollItem
-          v-for="payment in searchByDate"
-          :payment="payment"
-          :metaData="metaData"
-        />
-      </tbody>
-    </table>
+    <Table></Table>
   </div>
 </template>
 
 <script>
-import axios from "axios";
-import PayrollItem from "./PayrollItem.vue";
 import Modal from "./Modal.vue";
-import ArrowButton from "./ArrowButton.vue";
+import Table from "./Table.vue";
+import { mapState, mapGetters, mapMutations } from "vuex";
 
 export default {
-  components: { PayrollItem, Modal, ArrowButton },
-  data() {
-    return {
-      payroll: [],
-      metaData: [],
-      modalVisible: false,
-      sort: "",
-      conditionSort: true,
-      searchSource: 0,
-      searchDate: "",
-    };
-  },
+  components: { Modal, Table },
+
   methods: {
-    hideModal() {
-      this.modalVisible = false;
-    },
-
-    showModal() {
-      this.modalVisible = true;
-    },
-
-    changeSource(event) {
-      this.searchSource = event.target.value;
-    },
-
-    changeDate(event) {
-      this.searchDate = event.target.value;
-    },
-
-    async getPayroll() {
-      try {
-        const metaResponse = await axios.get(
-          "https://tests.szapi.ru/ts5/public_html/form_tss"
-        );
-        this.metaData = metaResponse.data;
-
-        const response = await axios.get(
-          "https://tests.szapi.ru/ts5/public_html/payments"
-        );
-        this.payroll = response.data;
-      } catch (error) {
-        console.log(error);
-      }
-    },
+    ...mapMutations({
+      setSortType: "payroll/setSortType",
+      setConditionSort: "payroll/setConditionSort",
+      setSourceSearch: "payroll/setSourceSearch",
+      setDateSearch: "payroll/setDateSearch",
+      hideModal: "payroll/hideModal",
+      showModal: "payroll/showModal",
+    }),
   },
   mounted() {
-    this.getPayroll();
+    this.$store.dispatch({ type: "payroll/getPayroll" });
   },
   computed: {
-    sortItems() {
-      if (this.payroll.length !== 0 && this.sort) {
-        const sortedArr = [...this.payroll].sort((a, b) => {
-          if (a[this.sort] > b[this.sort]) {
-            return 1;
-          }
-          if (a[this.sort] < b[this.sort]) {
-            return -1;
-          }
+    ...mapState({
+      payroll: (state) => state.payroll.payroll,
+      metaData: (state) => state.payroll.metaData,
+      sort: (state) => state.payroll.sort,
+      conditionSort: (state) => state.payroll.conditionSort,
+      searchSource: (state) => state.payroll.searchSource,
+      searchDate: (state) => state.payroll.searchDate,
+      modalVisible: (state) => state.payroll.modalVisible,
+    }),
 
-          return 0;
-        });
-
-        return this.conditionSort ? sortedArr : sortedArr.reverse();
-      } else return [...this.payroll];
-    },
-
-    searchBySource() {
-      if (this.searchSource == 0) return this.sortItems;
-
-      return this.sortItems.filter(
-        (item) => item.source_id == this.searchSource
-      );
-    },
-
-    searchByDate() {
-      if (this.searchDate == "") return this.searchBySource;
-      console.log(new Date(this.searchDate).toLocaleDateString("ru"));
-
-      return this.searchBySource.filter((item) =>
-        new Date(item.date)
-          .toLocaleDateString("ru")
-          .includes(new Date(this.searchDate).toLocaleDateString("ru"))
-      );
-    },
+    ...mapGetters({
+      sortItems: "payroll/sortItems",
+      searchBySource: "payroll/searchBySource",
+      searchByDate: "payroll/searchByDate",
+    }),
   },
 };
 </script>
 
 <style scoped>
-.arrow {
-  border: 0;
-  background-color: #fff;
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.5s;
+}
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
 }
 </style>
